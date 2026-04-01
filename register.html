@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="FieldVault — Equipment Chain-of-Custody Ledger. Sign up to start tracking field equipment.">
+  <meta name="theme-color" content="#060a13">
+  <title>FieldVault — Create Account</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="auth-wrapper">
+    <div class="auth-container">
+
+      <div class="auth-logo">
+        <div class="logo-icon">🛡️</div>
+        <h1>FieldVault</h1>
+        <p>Equipment Chain-of-Custody Ledger</p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <a href="register.html" class="active" style="flex:1;text-align:center;padding:10px;border-radius:var(--radius-sm);font-size:0.875rem;font-weight:600;text-decoration:none;background:var(--accent-blue);color:white;">Sign Up</a>
+          <a href="login.html" style="flex:1;text-align:center;padding:10px;border-radius:var(--radius-sm);font-size:0.875rem;font-weight:600;text-decoration:none;color:var(--text-secondary);">Sign In</a>
+        </div>
+
+        <form id="register-form" class="auth-form">
+          <div class="form-group">
+            <label for="reg-fullname">Full Name</label>
+            <input type="text" id="reg-fullname" class="form-input" placeholder="e.g. John Doe" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="reg-callsign">Callsign</label>
+              <input type="text" id="reg-callsign" class="form-input" placeholder="e.g. ALPHA-1">
+            </div>
+            <div class="form-group">
+              <label for="reg-role">Role</label>
+              <select id="reg-role" class="form-select" required>
+                <option value="field_user">Field Operator</option>
+                <option value="commanding_officer">Commanding Officer</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="reg-email">Email Address</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="you@email.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="reg-password">Password</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="Min 6 characters" required minlength="6">
+          </div>
+
+          <button type="submit" id="btn-register" class="btn btn-primary btn-full btn-lg">
+            Create Account
+          </button>
+
+          <div id="register-status" class="hidden" style="text-align:center;padding:var(--space-md);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-top:var(--space-sm);"></div>
+        </form>
+
+        <p style="text-align:center;margin-top:var(--space-md);font-size:0.8125rem;color:var(--text-secondary);">
+          Already have an account? <a href="login.html" style="color:var(--accent-blue);font-weight:600;">Sign In →</a>
+        </p>
+      </div>
+
+      <p style="text-align:center;margin-top:var(--space-lg);color:var(--text-muted);font-size:0.75rem;">
+        🔒 Secured with Row Level Security &amp; Encryption
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ── Supabase Config ──
+    const SUPABASE_URL = 'https://hoosoptgumzzzkvyqrlx.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhvb3NvcHRndW16enprdnlxcmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Nzg3NjMsImV4cCI6MjA5MDM1NDc2M30.Au8HFFbKet6sXBmUv_pj6jXLATlR5E2W12AKRmwKyFU';
+
+    let sb;
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('✅ Supabase connected');
+    } catch(e) {
+      console.error('❌ Supabase error:', e);
+    }
+
+    // ── Toast helper ──
+    function showToast(msg, type) {
+      const c = document.getElementById('toast-container');
+      const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+      const t = document.createElement('div');
+      t.className = 'toast ' + type;
+      t.innerHTML = '<span class="toast-icon">'+(icons[type]||'ℹ️')+'</span><span class="toast-message">'+msg+'</span><button class="toast-dismiss" onclick="this.parentElement.remove()">✕</button>';
+      c.appendChild(t);
+      setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(100%)'; t.style.transition='all 0.3s'; setTimeout(()=>t.remove(),300); }, 4500);
+    }
+
+    // ── Register Handler ──
+    document.getElementById('register-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const fullName = document.getElementById('reg-fullname').value.trim();
+      const callsign = document.getElementById('reg-callsign').value.trim();
+      const role = document.getElementById('reg-role').value;
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+
+      const btn = document.getElementById('btn-register');
+      const status = document.getElementById('register-status');
+
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+
+      try {
+        if (!sb) throw new Error('Supabase not connected. Check your URL and API key.');
+
+        // 1. Sign up with Supabase Auth
+        const { data, error } = await sb.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            data: {
+              full_name: fullName,
+              callsign: callsign,
+              role: role
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        // 2. If user was created, update profile role
+        if (data.user) {
+          // Give a moment for the trigger to create the profile
+          await new Promise(r => setTimeout(r, 1500));
+
+          await sb.from('profiles').update({
+            role: role,
+            callsign: callsign || null,
+            unit: 'Alpha Unit'
+          }).eq('id', data.user.id);
+        }
+
+        // 3. Show success & redirect to login
+        status.classList.remove('hidden');
+        status.innerHTML = '<p style="color:var(--accent-green);font-weight:600;margin-bottom:4px;">✅ Account created successfully!</p><p style="color:var(--text-secondary);font-size:0.8125rem;">Redirecting to Sign In...</p>';
+
+        showToast('Account created! Redirecting...', 'success');
+
+        // Sign out so they can log in fresh
+        await sb.auth.signOut();
+
+        // Redirect to login page after 2 seconds
+        setTimeout(() => {
+          window.location.href = 'login.html?registered=1&email=' + encodeURIComponent(email);
+        }, 2000);
+
+      } catch (err) {
+        console.error('Registration error:', err);
+        showToast(err.message || 'Registration failed. Please try again.', 'error');
+
+        status.classList.remove('hidden');
+        status.innerHTML = '<p style="color:var(--accent-red);">❌ ' + (err.message || 'Registration failed') + '</p>';
+
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+
+    // ── If already logged in, go to dashboard ──
+    (async () => {
+      if (!sb) return;
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        window.location.href = 'dashboard.html';
+      }
+    })();
+  </script>
+
+</body>
+</html>

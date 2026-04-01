@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="FieldVault — Sign in to access your equipment chain-of-custody ledger.">
+  <meta name="theme-color" content="#060a13">
+  <title>FieldVault — Sign In</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="auth-wrapper">
+    <div class="auth-container">
+
+      <div class="auth-logo">
+        <div class="logo-icon">🛡️</div>
+        <h1>FieldVault</h1>
+        <p>Equipment Chain-of-Custody Ledger</p>
+      </div>
+
+      <!-- Success banner if redirected from register -->
+      <div id="register-success-banner" class="hidden" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);padding:var(--space-md);text-align:center;margin-bottom:var(--space-md);animation:fadeSlideUp 0.4s ease-out;">
+        <p style="color:var(--accent-green);font-weight:600;">✅ Account created successfully!</p>
+        <p style="color:var(--text-secondary);font-size:0.8125rem;">Please sign in with your credentials below.</p>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <a href="register.html" style="flex:1;text-align:center;padding:10px;border-radius:var(--radius-sm);font-size:0.875rem;font-weight:600;text-decoration:none;color:var(--text-secondary);">Sign Up</a>
+          <a href="login.html" class="active" style="flex:1;text-align:center;padding:10px;border-radius:var(--radius-sm);font-size:0.875rem;font-weight:600;text-decoration:none;background:var(--accent-blue);color:white;">Sign In</a>
+        </div>
+
+        <form id="login-form" class="auth-form">
+          <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" class="form-input" placeholder="you@email.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" required minlength="6">
+          </div>
+
+          <button type="submit" id="btn-login" class="btn btn-primary btn-full btn-lg">
+            Sign In
+          </button>
+
+          <div id="login-status" class="hidden" style="text-align:center;padding:var(--space-md);background:var(--bg-tertiary);border-radius:var(--radius-md);margin-top:var(--space-sm);"></div>
+        </form>
+
+        <p style="text-align:center;margin-top:var(--space-md);font-size:0.8125rem;color:var(--text-secondary);">
+          Don't have an account? <a href="register.html" style="color:var(--accent-blue);font-weight:600;">Sign Up →</a>
+        </p>
+      </div>
+
+      <p style="text-align:center;margin-top:var(--space-lg);color:var(--text-muted);font-size:0.75rem;">
+        🔒 Secured with Row Level Security &amp; Encryption
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ── Supabase Config ──
+    const SUPABASE_URL = 'https://hoosoptgumzzzkvyqrlx.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhvb3NvcHRndW16enprdnlxcmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Nzg3NjMsImV4cCI6MjA5MDM1NDc2M30.Au8HFFbKet6sXBmUv_pj6jXLATlR5E2W12AKRmwKyFU';
+
+    let sb;
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('✅ Supabase connected');
+    } catch(e) {
+      console.error('❌ Supabase error:', e);
+    }
+
+    // ── Toast helper ──
+    function showToast(msg, type) {
+      const c = document.getElementById('toast-container');
+      const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+      const t = document.createElement('div');
+      t.className = 'toast ' + type;
+      t.innerHTML = '<span class="toast-icon">'+(icons[type]||'ℹ️')+'</span><span class="toast-message">'+msg+'</span><button class="toast-dismiss" onclick="this.parentElement.remove()">✕</button>';
+      c.appendChild(t);
+      setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(100%)'; t.style.transition='all 0.3s'; setTimeout(()=>t.remove(),300); }, 4500);
+    }
+
+    // ── Check if redirected from registration ──
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('registered') === '1') {
+      document.getElementById('register-success-banner').classList.remove('hidden');
+      const email = params.get('email');
+      if (email) {
+        document.getElementById('login-email').value = decodeURIComponent(email);
+        document.getElementById('login-password').focus();
+      }
+    }
+
+    // ── Login Handler ──
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('btn-login');
+      const status = document.getElementById('login-status');
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+
+      try {
+        if (!sb) throw new Error('Supabase not connected. Check your URL and API key.');
+
+        const { data, error } = await sb.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+        if (error) throw error;
+
+        // Success — redirect to dashboard
+        status.classList.remove('hidden');
+        status.innerHTML = '<p style="color:var(--accent-green);font-weight:600;">✅ Welcome back!</p><p style="color:var(--text-secondary);font-size:0.8125rem;">Loading dashboard...</p>';
+
+        showToast('Signed in successfully!', 'success');
+
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 1000);
+
+      } catch (err) {
+        console.error('Login error:', err);
+        showToast(err.message || 'Login failed', 'error');
+
+        status.classList.remove('hidden');
+        status.innerHTML = '<p style="color:var(--accent-red);">❌ ' + (err.message || 'Invalid email or password') + '</p>';
+
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    });
+
+    // ── If already logged in, go to dashboard ──
+    (async () => {
+      if (!sb) return;
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        window.location.href = 'dashboard.html';
+      }
+    })();
+  </script>
+
+</body>
+</html>

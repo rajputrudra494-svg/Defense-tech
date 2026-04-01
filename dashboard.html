@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="FieldVault Dashboard — Track and manage field equipment in real time.">
+  <meta name="theme-color" content="#060a13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FieldVault — Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+  <div id="toast-container" class="toast-container"></div>
+  <div id="modal-container" class="hidden"></div>
+
+  <!-- ══════════ APP LAYOUT ══════════ -->
+  <div class="app-wrapper">
+
+    <!-- ── Sidebar (Desktop) ── -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🛡️</div>
+        <h2>FieldVault</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
+        <button class="nav-item" data-page="assets"><span class="nav-icon">📦</span><span>Equipment</span></button>
+        <button class="nav-item" data-page="activity"><span class="nav-icon">📋</span><span>Activity Log</span></button>
+        <button class="nav-item" data-page="profile"><span class="nav-icon">👤</span><span>Profile</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-card" onclick="navigateTo('profile')">
+          <div class="user-avatar" id="sidebar-avatar">--</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebar-name">Loading...</div>
+            <div class="user-role" id="sidebar-role">--</div>
+          </div>
+        </div>
+        <button class="nav-item" style="margin-top:8px;color:var(--accent-red);" onclick="handleLogout()">
+          <span class="nav-icon">🚪</span><span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Main Content ── -->
+    <main class="main-content">
+
+      <!-- Mobile Header -->
+      <header class="mobile-header">
+        <div class="header-logo">
+          <div class="logo-icon">🛡️</div>
+          <h1>FieldVault</h1>
+        </div>
+        <div class="header-actions">
+          <div class="pulse-dot" title="Connected"></div>
+          <button class="user-avatar btn-icon" id="mobile-avatar" style="width:34px;height:34px;font-size:0.75rem;" onclick="navigateTo('profile')">--</button>
+        </div>
+      </header>
+
+      <!-- ══════════ DASHBOARD PAGE ══════════ -->
+      <section id="page-dashboard" class="page">
+        <div class="page-header">
+          <h2>Dashboard</h2>
+          <p id="welcome-msg">Equipment status overview</p>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card blue"><div class="stat-icon">📦</div><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Assets</div></div>
+          <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-value" id="stat-available">0</div><div class="stat-label">Available</div></div>
+          <div class="stat-card red"><div class="stat-icon">⬆️</div><div class="stat-value" id="stat-checked">0</div><div class="stat-label">Checked Out</div></div>
+          <div class="stat-card amber"><div class="stat-icon">🔧</div><div class="stat-value" id="stat-maintenance">0</div><div class="stat-label">Maintenance</div></div>
+        </div>
+        <h3 class="section-title">🕐 Recent Activity</h3>
+        <div class="timeline" id="recent-activity">
+          <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
+        </div>
+      </section>
+
+      <!-- ══════════ ASSETS PAGE ══════════ -->
+      <section id="page-assets" class="page hidden">
+        <div class="page-header-actions">
+          <div><h2>Equipment</h2><p style="color:var(--text-secondary);font-size:0.875rem;margin-top:2px;">Manage & track all assets</p></div>
+          <button class="btn btn-primary co-only" id="btn-add-asset" onclick="openAddAssetModal()" style="display:none;">+ Register</button>
+        </div>
+        <div class="search-bar" style="margin-top:var(--space-lg);">
+          <div class="search-input-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-assets" class="search-input" placeholder="Search by name, serial, or location...">
+          </div>
+        </div>
+        <div class="filter-chips">
+          <button class="chip active" data-status="all" onclick="setFilter('status','all')">All</button>
+          <button class="chip" data-status="available" onclick="setFilter('status','available')">✅ Available</button>
+          <button class="chip" data-status="checked_out" onclick="setFilter('status','checked_out')">⬆️ Checked Out</button>
+          <button class="chip" data-status="maintenance" onclick="setFilter('status','maintenance')">🔧 Maintenance</button>
+        </div>
+        <div class="filter-chips" style="margin-bottom:var(--space-lg);">
+          <button class="chip active" data-type="all" onclick="setFilter('type','all')">All Types</button>
+          <button class="chip" data-type="drone" onclick="setFilter('type','drone')">🛸 Drones</button>
+          <button class="chip" data-type="radio" onclick="setFilter('type','radio')">📻 Radios</button>
+          <button class="chip" data-type="vehicle" onclick="setFilter('type','vehicle')">🚙 Vehicles</button>
+          <button class="chip" data-type="weapon" onclick="setFilter('type','weapon')">🎯 Weapons</button>
+          <button class="chip" data-type="optics" onclick="setFilter('type','optics')">🔭 Optics</button>
+          <button class="chip" data-type="comms" onclick="setFilter('type','comms')">📡 Comms</button>
+        </div>
+        <div id="assets-container" class="assets-list">
+          <div class="loading-state"><div class="spinner"></div><p>Loading equipment...</p></div>
+        </div>
+      </section>
+
+      <!-- ══════════ ACTIVITY PAGE ══════════ -->
+      <section id="page-activity" class="page hidden">
+        <div class="page-header"><h2>Activity Log</h2><p>Full chain-of-custody audit trail</p></div>
+        <div id="activity-timeline">
+          <div class="loading-state"><div class="spinner"></div><p>Loading activity...</p></div>
+        </div>
+      </section>
+
+      <!-- ══════════ ASSET DETAIL PAGE ══════════ -->
+      <section id="page-detail" class="page hidden"></section>
+
+      <!-- ══════════ PROFILE PAGE ══════════ -->
+      <section id="page-profile" class="page hidden">
+        <div class="page-header"><h2>Profile</h2><p>Your account settings</p></div>
+        <div id="profile-content">
+          <div class="loading-state"><div class="spinner"></div><p>Loading profile...</p></div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── Mobile Bottom Nav ── -->
+    <nav class="bottom-nav">
+      <button class="bottom-nav-item active" data-page="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
+      <button class="bottom-nav-item" data-page="assets"><span class="nav-icon">📦</span><span>Equipment</span></button>
+      <button class="bottom-nav-item" data-page="activity"><span class="nav-icon">📋</span><span>Activity</span></button>
+      <button class="bottom-nav-item" data-page="profile"><span class="nav-icon">👤</span><span>Profile</span></button>
+    </nav>
+
+  </div>
+
+  <script>
+    // ════════════════════════════════════════
+    //  SUPABASE CONFIG
+    // ════════════════════════════════════════
+    const SUPABASE_URL = 'https://hoosoptgumzzzkvyqrlx.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhvb3NvcHRndW16enprdnlxcmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Nzg3NjMsImV4cCI6MjA5MDM1NDc2M30.Au8HFFbKet6sXBmUv_pj6jXLATlR5E2W12AKRmwKyFU';
+
+    let sb;
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch(e) { console.error('Supabase error:', e); }
+
+    // ════════════════════════════════════════
+    //  STATE
+    // ════════════════════════════════════════
+    const state = {
+      user: null, profile: null, assets: [], currentPage: 'dashboard',
+      selectedAsset: null,
+      filters: { status: 'all', type: 'all', search: '' }
+    };
+
+    const ICONS = { drone:'🛸', radio:'📻', vehicle:'🚙', weapon:'🎯', optics:'🔭', medical:'🩺', comms:'📡', other:'📦' };
+    const STATUS = { available:'Available', checked_out:'Checked Out', maintenance:'Maintenance', decommissioned:'Decommissioned' };
+    const ACTIONS = { check_out:'Checked Out', check_in:'Checked In', transfer:'Transferred', maintenance_start:'Maintenance Started', maintenance_end:'Maintenance Ended', registered:'Registered' };
+
+    // ════════════════════════════════════════
+    //  HELPERS
+    // ════════════════════════════════════════
+    function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    function cap(s) { return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
+    function fmtDate(d) {
+      if(!d) return '';
+      const dt=new Date(d), now=new Date(), diff=now-dt;
+      if(diff<60000) return 'Just now';
+      if(diff<3600000) return Math.floor(diff/60000)+'m ago';
+      if(diff<86400000) return Math.floor(diff/3600000)+'h ago';
+      if(diff<604800000) return Math.floor(diff/86400000)+'d ago';
+      return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    }
+    function showToast(msg,type='info') {
+      const c=document.getElementById('toast-container'), icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+      const t=document.createElement('div'); t.className='toast '+type;
+      t.innerHTML='<span class="toast-icon">'+(icons[type]||'ℹ️')+'</span><span class="toast-message">'+esc(msg)+'</span><button class="toast-dismiss" onclick="this.parentElement.remove()">✕</button>';
+      c.appendChild(t);
+      setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(100%)';t.style.transition='all 0.3s';setTimeout(()=>t.remove(),300);},4500);
+    }
+    function isOfficer() { return state.profile?.role === 'commanding_officer'; }
+    function typeColor(t) {
+      const c = {drone:'rgba(59,130,246,0.15)',radio:'rgba(245,158,11,0.15)',vehicle:'rgba(34,197,94,0.15)',weapon:'rgba(239,68,68,0.15)',optics:'rgba(139,92,246,0.15)',medical:'rgba(236,72,153,0.15)',comms:'rgba(6,182,212,0.15)',other:'rgba(148,163,184,0.15)'};
+      return c[t]||c.other;
+    }
+    function closeModal(e) {
+      if(e && e.target && !e.target.classList.contains('modal-overlay')) return;
+      const m=document.getElementById('modal-container'); m.classList.add('hidden'); m.innerHTML='';
+    }
+
+    // ════════════════════════════════════════
+    //  AUTH CHECK — Redirect to login if not signed in
+    // ════════════════════════════════════════
+    async function init() {
+      if (!sb) {
+        showToast('Supabase not connected. Check config.', 'error');
+        return;
+      }
+
+      const { data: { session } } = await sb.auth.getSession();
+
+      if (!session) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      state.user = session.user;
+      await loadProfile();
+      updateUserUI();
+      initNav();
+      loadDashboard();
+      setupRealtime();
+      showToast('Welcome, ' + (state.profile?.callsign || state.profile?.full_name || 'Operator'), 'success');
+    }
+
+    init();
+
+    // ════════════════════════════════════════
+    //  PROFILE
+    // ════════════════════════════════════════
+    async function loadProfile() {
+      try {
+        const { data, error } = await sb.from('profiles').select('*').eq('id', state.user.id).single();
+        if (error) throw error;
+        state.profile = data;
+      } catch(e) {
+        console.warn('Profile load:', e);
+        state.profile = {
+          id: state.user.id,
+          full_name: state.user.user_metadata?.full_name || 'User',
+          callsign: state.user.user_metadata?.callsign || null,
+          role: state.user.user_metadata?.role || 'field_user',
+          unit: 'Unassigned'
+        };
+      }
+    }
+
+    function updateUserUI() {
+      const p = state.profile;
+      if (!p) return;
+      const initials = (p.full_name||'U').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+      const roleTxt = p.role === 'commanding_officer' ? 'Commanding Officer' : 'Field Operator';
+
+      const sa = document.getElementById('sidebar-avatar');
+      const sn = document.getElementById('sidebar-name');
+      const sr = document.getElementById('sidebar-role');
+      const ma = document.getElementById('mobile-avatar');
+
+      if(sa) sa.textContent = initials;
+      if(sn) sn.textContent = p.callsign || p.full_name;
+      if(sr) sr.textContent = roleTxt;
+      if(ma) ma.textContent = initials;
+
+      const wm = document.getElementById('welcome-msg');
+      if(wm) wm.textContent = 'Welcome, ' + (p.callsign || p.full_name) + ' • ' + roleTxt;
+
+      document.querySelectorAll('.co-only').forEach(el => {
+        el.style.display = isOfficer() ? '' : 'none';
+      });
+    }
+
+    // ════════════════════════════════════════
+    //  NAVIGATION
+    // ════════════════════════════════════════
+    function initNav() {
+      document.querySelectorAll('.bottom-nav-item, .nav-item[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => navigateTo(btn.dataset.page));
+      });
+      document.getElementById('search-assets')?.addEventListener('input', e => {
+        state.filters.search = e.target.value.toLowerCase();
+        renderAssets();
+      });
+    }
+
+    function navigateTo(page) {
+      state.currentPage = page;
+      document.querySelectorAll('.bottom-nav-item, .nav-item[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page===page));
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      const t = document.getElementById('page-'+page);
+      if(t) { t.classList.remove('hidden'); t.style.animation='none'; t.offsetHeight; t.style.animation='fadeIn 0.3s ease-out'; }
+      switch(page) {
+        case 'dashboard': loadDashboard(); break;
+        case 'assets': loadAssets(); break;
+        case 'activity': loadActivity(); break;
+        case 'profile': renderProfile(); break;
+      }
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      window.location.href = 'login.html';
+    }
+
+    // ════════════════════════════════════════
+    //  DASHBOARD
+    // ════════════════════════════════════════
+    async function loadDashboard() {
+      try {
+        const { data: assets } = await sb.from('assets').select('*');
+        state.assets = assets || [];
+        animateCount('stat-total', state.assets.length);
+        animateCount('stat-available', state.assets.filter(a=>a.status==='available').length);
+        animateCount('stat-checked', state.assets.filter(a=>a.status==='checked_out').length);
+        animateCount('stat-maintenance', state.assets.filter(a=>a.status==='maintenance').length);
+        const { data: logs } = await sb.from('custody_logs')
+          .select('*, asset:assets(name, serial_number, type), performer:profiles!custody_logs_performed_by_fkey(full_name, callsign)')
+          .order('created_at', { ascending: false }).limit(5);
+        renderRecentLogs(logs||[]);
+      } catch(e) { console.error('Dashboard error:', e); }
+    }
+
+    function animateCount(id, target) {
+      const el = document.getElementById(id); if(!el) return;
+      if(target===0) { el.textContent='0'; return; }
+      let cur=0; const step=target/(600/16);
+      const go = () => { cur+=step; if(cur>=target){el.textContent=target;return;} el.textContent=Math.floor(cur); requestAnimationFrame(go); };
+      go();
+    }
+
+    function renderRecentLogs(logs) {
+      const c = document.getElementById('recent-activity'); if(!c) return;
+      if(!logs.length) { c.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><h3>No Recent Activity</h3><p>Equipment transactions will appear here</p></div>'; return; }
+      c.innerHTML = logs.map(l=>`
+        <div class="timeline-item">
+          <div class="timeline-dot ${l.action}"></div>
+          <div class="timeline-content">
+            <div class="timeline-action ${l.action}">${ACTIONS[l.action]||l.action}</div>
+            <div class="timeline-details">
+              <strong>${l.asset?.name||'Unknown'}</strong>${l.asset?.serial_number?` <span class="mono" style="opacity:0.5;font-size:0.7rem;">${l.asset.serial_number}</span>`:''}
+              <br>by ${l.performer?.callsign||l.performer?.full_name||'Unknown'}
+              ${l.location?' • 📍 '+esc(l.location):''}${l.notes?'<br><em style="opacity:0.7">'+esc(l.notes)+'</em>':''}
+            </div>
+            <div class="timeline-time">${fmtDate(l.created_at)}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    // ════════════════════════════════════════
+    //  ASSETS
+    // ════════════════════════════════════════
+    async function loadAssets() {
+      try {
+        const { data } = await sb.from('assets')
+          .select('*, holder:profiles!assets_current_holder_id_fkey(full_name, callsign)')
+          .order('updated_at', { ascending: false });
+        state.assets = data || [];
+        renderAssets();
+      } catch(e) { console.error('Assets error:', e); showToast('Failed to load assets','error'); }
+    }
+
+    function renderAssets() {
+      const c = document.getElementById('assets-container'); if(!c) return;
+      let f = [...state.assets];
+      if(state.filters.status!=='all') f=f.filter(a=>a.status===state.filters.status);
+      if(state.filters.type!=='all') f=f.filter(a=>a.type===state.filters.type);
+      if(state.filters.search) f=f.filter(a=>a.name.toLowerCase().includes(state.filters.search)||a.serial_number.toLowerCase().includes(state.filters.search)||(a.location||'').toLowerCase().includes(state.filters.search));
+      if(!f.length) {
+        c.innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🔍</div><h3>No Assets Found</h3><p>${state.assets.length===0?'No equipment registered yet.':'Try adjusting your filters.'}</p>${isOfficer()?'<button class="btn btn-primary" onclick="openAddAssetModal()">+ Register Equipment</button>':''}</div>`;
+        return;
+      }
+      c.innerHTML = f.map(a=>`
+        <div class="asset-card" onclick="viewDetail('${a.id}')">
+          <div class="asset-card-header">
+            <div class="asset-type-icon ${a.type}">${ICONS[a.type]||'📦'}</div>
+            <span class="status-badge ${a.status}">${STATUS[a.status]}</span>
+          </div>
+          <div class="asset-card-body">
+            <h3>${esc(a.name)}</h3>
+            <div class="serial">${esc(a.serial_number)}</div>
+          </div>
+          <div class="asset-card-meta">
+            ${a.location?'<span>📍 '+esc(a.location)+'</span>':''}
+            ${a.holder?'<span>👤 '+esc(a.holder.callsign||a.holder.full_name)+'</span>':''}
+          </div>
+          <div class="asset-card-actions">
+            ${a.status==='available'?`<button class="btn btn-success btn-sm" onclick="event.stopPropagation();openCheckoutModal('${a.id}')">Check Out</button>`:''}
+            ${a.status==='checked_out'&&(a.current_holder_id===state.user?.id||isOfficer())?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openCheckinModal('${a.id}')">Check In</button>`:''}
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();viewDetail('${a.id}')">Details</button>
+          </div>
+        </div>`).join('');
+    }
+
+    function setFilter(type, value) {
+      state.filters[type] = value;
+      const attr = type==='status'?'data-status':'data-type';
+      document.querySelectorAll(`.chip[${attr}]`).forEach(c=>c.classList.toggle('active',c.getAttribute(attr)===value));
+      renderAssets();
+    }
+
+    // ════════════════════════════════════════
+    //  ASSET DETAIL
+    // ════════════════════════════════════════
+    async function viewDetail(id) {
+      const asset = state.assets.find(a=>a.id===id);
+      if(!asset) return;
+      state.selectedAsset = asset;
+      navigateTo('detail');
+      const dp = document.getElementById('page-detail');
+      let logs = [];
+      try {
+        const { data } = await sb.from('custody_logs')
+          .select('*, performer:profiles!custody_logs_performed_by_fkey(full_name, callsign), receiver:profiles!custody_logs_received_by_fkey(full_name, callsign)')
+          .eq('asset_id', id).order('created_at', { ascending: false });
+        logs = data||[];
+      } catch(e) {}
+      dp.innerHTML = `
+        <button class="back-btn" onclick="navigateTo('assets')">← Back to Equipment</button>
+        <div class="detail-header">
+          <div class="detail-icon ${asset.type}" style="background:${typeColor(asset.type)}">${ICONS[asset.type]||'📦'}</div>
+          <div class="detail-info"><h2>${esc(asset.name)}</h2><div class="serial">${esc(asset.serial_number)}</div><span class="status-badge ${asset.status}" style="margin-top:8px;">${STATUS[asset.status]}</span></div>
+        </div>
+        <div class="detail-meta">
+          <div class="meta-item"><div class="meta-label">Type</div><div class="meta-value">${cap(asset.type)}</div></div>
+          <div class="meta-item"><div class="meta-label">Location</div><div class="meta-value">${asset.location||'N/A'}</div></div>
+          <div class="meta-item"><div class="meta-label">Holder</div><div class="meta-value">${asset.holder?.callsign||asset.holder?.full_name||'None'}</div></div>
+          <div class="meta-item"><div class="meta-label">Updated</div><div class="meta-value mono" style="font-size:0.75rem;">${fmtDate(asset.updated_at)}</div></div>
+        </div>
+        ${asset.notes?'<div class="meta-item" style="margin-bottom:var(--space-lg);"><div class="meta-label">Notes</div><div class="meta-value" style="font-weight:400;font-size:0.875rem;">'+esc(asset.notes)+'</div></div>':''}
+        <div class="detail-actions">
+          ${asset.status==='available'?`<button class="btn btn-success" onclick="openCheckoutModal('${asset.id}')">⬆ Check Out</button>`:''}
+          ${asset.status==='checked_out'&&(asset.current_holder_id===state.user?.id||isOfficer())?`<button class="btn btn-primary" onclick="openCheckinModal('${asset.id}')">⬇ Check In</button>`:''}
+          ${isOfficer()?`<button class="btn btn-ghost" onclick="openEditModal('${asset.id}')">✏️ Edit</button>`:''}
+        </div>
+        <div class="section-divider"></div>
+        <h3 class="section-title">📋 Chain of Custody</h3>
+        <div class="timeline">
+          ${!logs.length?'<p style="color:var(--text-secondary);font-size:0.875rem;">No custody records yet.</p>':
+            logs.map(l=>`<div class="timeline-item"><div class="timeline-dot ${l.action}"></div><div class="timeline-content"><div class="timeline-action ${l.action}">${ACTIONS[l.action]||l.action}</div><div class="timeline-details">by <strong>${l.performer?.callsign||l.performer?.full_name||'?'}</strong>${l.receiver?' → <strong>'+(l.receiver.callsign||l.receiver.full_name)+'</strong>':''}${l.location?' • 📍 '+esc(l.location):''}${l.notes?'<br><em style="opacity:0.6">'+esc(l.notes)+'</em>':''}</div><div class="timeline-time">${fmtDate(l.created_at)}</div></div></div>`).join('')}
+        </div>`;
+    }
+
+    // ════════════════════════════════════════
+    //  MODALS: CHECK-OUT
+    // ════════════════════════════════════════
+    function openCheckoutModal(id) {
+      const a = state.assets.find(x=>x.id===id); if(!a) return;
+      const m = document.getElementById('modal-container');
+      m.innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header"><h3>⬆ Check Out Equipment</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form onsubmit="doCheckout(event,'${id}')">
+          <div class="modal-body">
+            <div style="background:var(--bg-tertiary);border-radius:var(--radius-md);padding:var(--space-md);display:flex;align-items:center;gap:var(--space-sm);"><span style="font-size:1.5rem;">${ICONS[a.type]}</span><div><div style="font-weight:600;">${esc(a.name)}</div><div class="mono" style="font-size:0.75rem;color:var(--text-tertiary);">${esc(a.serial_number)}</div></div></div>
+            <div class="form-group"><label>Location / Grid Ref</label><input type="text" id="co-loc" class="form-input" placeholder="e.g. Grid 34T KM 1234" required></div>
+            <div class="form-group"><label>Notes (optional)</label><textarea id="co-notes" class="form-input" rows="3" placeholder="Mission details..."></textarea></div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-success" id="co-btn" style="flex:1;">Confirm Check Out</button></div>
+        </form>
+      </div></div>`;
+      m.classList.remove('hidden');
+    }
+
+    async function doCheckout(e, id) {
+      e.preventDefault();
+      const btn=document.getElementById('co-btn'); btn.disabled=true; btn.textContent='Processing...';
+      try {
+        await sb.from('assets').update({status:'checked_out',current_holder_id:state.user.id,location:document.getElementById('co-loc').value}).eq('id',id);
+        await sb.from('custody_logs').insert({asset_id:id,action:'check_out',performed_by:state.user.id,location:document.getElementById('co-loc').value,notes:document.getElementById('co-notes').value||null});
+        closeModal(); showToast('Equipment checked out','success'); loadAssets(); loadDashboard();
+      } catch(err) { showToast(err.message||'Failed','error'); btn.disabled=false; btn.textContent='Confirm Check Out'; }
+    }
+
+    // ════════════════════════════════════════
+    //  MODALS: CHECK-IN
+    // ════════════════════════════════════════
+    function openCheckinModal(id) {
+      const a = state.assets.find(x=>x.id===id); if(!a) return;
+      const m = document.getElementById('modal-container');
+      m.innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header"><h3>⬇ Check In Equipment</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form onsubmit="doCheckin(event,'${id}')">
+          <div class="modal-body">
+            <div style="background:var(--bg-tertiary);border-radius:var(--radius-md);padding:var(--space-md);display:flex;align-items:center;gap:var(--space-sm);"><span style="font-size:1.5rem;">${ICONS[a.type]}</span><div><div style="font-weight:600;">${esc(a.name)}</div><div class="mono" style="font-size:0.75rem;color:var(--text-tertiary);">${esc(a.serial_number)}</div></div></div>
+            <div class="form-group"><label>Return Location</label><input type="text" id="ci-loc" class="form-input" placeholder="e.g. FOB Alpha Armory" required></div>
+            <div class="form-group"><label>Condition / Notes</label><textarea id="ci-notes" class="form-input" rows="3" placeholder="Equipment condition..."></textarea></div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-primary" id="ci-btn" style="flex:1;">Confirm Check In</button></div>
+        </form>
+      </div></div>`;
+      m.classList.remove('hidden');
+    }
+
+    async function doCheckin(e, id) {
+      e.preventDefault();
+      const btn=document.getElementById('ci-btn'); btn.disabled=true; btn.textContent='Processing...';
+      try {
+        await sb.from('assets').update({status:'available',current_holder_id:null,location:document.getElementById('ci-loc').value}).eq('id',id);
+        await sb.from('custody_logs').insert({asset_id:id,action:'check_in',performed_by:state.user.id,location:document.getElementById('ci-loc').value,notes:document.getElementById('ci-notes').value||null});
+        closeModal(); showToast('Equipment checked in','success'); loadAssets(); loadDashboard();
+      } catch(err) { showToast(err.message||'Failed','error'); btn.disabled=false; btn.textContent='Confirm Check In'; }
+    }
+
+    // ════════════════════════════════════════
+    //  MODALS: ADD ASSET (CO only)
+    // ════════════════════════════════════════
+    function openAddAssetModal() {
+      if(!isOfficer()) return showToast('Only COs can register equipment','warning');
+      const m = document.getElementById('modal-container');
+      m.innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header"><h3>📦 Register New Equipment</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form onsubmit="doAddAsset(event)">
+          <div class="modal-body">
+            <div class="form-group"><label>Equipment Name</label><input type="text" id="na-name" class="form-input" placeholder="e.g. DJI Mavic 3" required></div>
+            <div class="form-row">
+              <div class="form-group"><label>Type</label><select id="na-type" class="form-select">${Object.entries(ICONS).map(([k,v])=>'<option value="'+k+'">'+v+' '+cap(k)+'</option>').join('')}</select></div>
+              <div class="form-group"><label>Serial Number</label><input type="text" id="na-serial" class="form-input" placeholder="SN-2024-0001" required></div>
+            </div>
+            <div class="form-group"><label>Storage Location</label><input type="text" id="na-loc" class="form-input" placeholder="FOB Alpha, Locker 7"></div>
+            <div class="form-group"><label>Notes</label><textarea id="na-notes" class="form-input" rows="3" placeholder="Description..."></textarea></div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-primary" id="na-btn" style="flex:1;">Register Equipment</button></div>
+        </form>
+      </div></div>`;
+      m.classList.remove('hidden');
+    }
+
+    async function doAddAsset(e) {
+      e.preventDefault();
+      const btn=document.getElementById('na-btn'); btn.disabled=true; btn.textContent='Registering...';
+      try {
+        const d = {name:document.getElementById('na-name').value,type:document.getElementById('na-type').value,serial_number:document.getElementById('na-serial').value,location:document.getElementById('na-loc').value||null,notes:document.getElementById('na-notes').value||null,status:'available',created_by:state.user.id};
+        const { data, error } = await sb.from('assets').insert(d).select().single();
+        if(error) throw error;
+        await sb.from('custody_logs').insert({asset_id:data.id,action:'registered',performed_by:state.user.id,location:d.location,notes:'Equipment registered'});
+        closeModal(); showToast('Equipment registered: '+d.name,'success'); loadAssets(); loadDashboard();
+      } catch(err) { showToast(err.message||'Failed','error'); btn.disabled=false; btn.textContent='Register Equipment'; }
+    }
+
+    // ════════════════════════════════════════
+    //  MODALS: EDIT ASSET (CO only)
+    // ════════════════════════════════════════
+    function openEditModal(id) {
+      if(!isOfficer()) return;
+      const a = state.assets.find(x=>x.id===id); if(!a) return;
+      const m = document.getElementById('modal-container');
+      m.innerHTML = `<div class="modal-overlay" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header"><h3>✏️ Edit Equipment</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form onsubmit="doEdit(event,'${id}')">
+          <div class="modal-body">
+            <div class="form-group"><label>Name</label><input type="text" id="ed-name" class="form-input" value="${esc(a.name)}" required></div>
+            <div class="form-row">
+              <div class="form-group"><label>Type</label><select id="ed-type" class="form-select">${Object.entries(ICONS).map(([k,v])=>'<option value="'+k+'" '+(a.type===k?'selected':'')+'>'+v+' '+cap(k)+'</option>').join('')}</select></div>
+              <div class="form-group"><label>Status</label><select id="ed-status" class="form-select">${Object.entries(STATUS).map(([k,v])=>'<option value="'+k+'" '+(a.status===k?'selected':'')+'>'+v+'</option>').join('')}</select></div>
+            </div>
+            <div class="form-group"><label>Location</label><input type="text" id="ed-loc" class="form-input" value="${esc(a.location||'')}"></div>
+            <div class="form-group"><label>Notes</label><textarea id="ed-notes" class="form-input" rows="3">${esc(a.notes||'')}</textarea></div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-primary" id="ed-btn" style="flex:1;">Save Changes</button></div>
+        </form>
+      </div></div>`;
+      m.classList.remove('hidden');
+    }
+
+    async function doEdit(e, id) {
+      e.preventDefault();
+      const btn=document.getElementById('ed-btn'); btn.disabled=true; btn.textContent='Saving...';
+      try {
+        await sb.from('assets').update({name:document.getElementById('ed-name').value,type:document.getElementById('ed-type').value,status:document.getElementById('ed-status').value,location:document.getElementById('ed-loc').value||null,notes:document.getElementById('ed-notes').value||null}).eq('id',id);
+        closeModal(); showToast('Updated','success'); loadAssets(); viewDetail(id);
+      } catch(err) { showToast(err.message||'Failed','error'); btn.disabled=false; btn.textContent='Save Changes'; }
+    }
+
+    // ════════════════════════════════════════
+    //  ACTIVITY LOG
+    // ════════════════════════════════════════
+    async function loadActivity() {
+      const c = document.getElementById('activity-timeline'); if(!c) return;
+      c.innerHTML='<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>';
+      try {
+        const { data: logs } = await sb.from('custody_logs')
+          .select('*, asset:assets(name, serial_number, type), performer:profiles!custody_logs_performed_by_fkey(full_name, callsign), receiver:profiles!custody_logs_received_by_fkey(full_name, callsign)')
+          .order('created_at', { ascending: false }).limit(50);
+        if(!logs||!logs.length) { c.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><h3>No Activity Yet</h3><p>Equipment transactions will appear here</p></div>'; return; }
+        c.innerHTML='<div class="timeline">'+logs.map(l=>`
+          <div class="timeline-item"><div class="timeline-dot ${l.action}"></div><div class="timeline-content">
+            <div class="timeline-action ${l.action}">${ACTIONS[l.action]||l.action}</div>
+            <div class="timeline-details">${l.asset?`<strong style="cursor:pointer;" onclick="viewDetail('${l.asset_id}')">${ICONS[l.asset?.type]||'📦'} ${esc(l.asset.name)}</strong> <span class="mono" style="opacity:0.5;font-size:0.7rem;">${esc(l.asset.serial_number)}</span>`:''}<br>by <strong>${l.performer?.callsign||l.performer?.full_name||'?'}</strong>${l.receiver?' → <strong>'+(l.receiver.callsign||l.receiver.full_name)+'</strong>':''}${l.location?' • 📍 '+esc(l.location):''}${l.notes?'<br><em style="opacity:0.6;font-size:0.8rem;">'+esc(l.notes)+'</em>':''}</div>
+            <div class="timeline-time">${fmtDate(l.created_at)}</div>
+          </div></div>`).join('')+'</div>';
+      } catch(e) { c.innerHTML='<div class="empty-state"><h3>Error loading activity</h3></div>'; }
+    }
+
+    // ════════════════════════════════════════
+    //  PROFILE PAGE
+    // ════════════════════════════════════════
+    function renderProfile() {
+      const c = document.getElementById('profile-content'); if(!c||!state.profile) return;
+      const p = state.profile;
+      const initials = (p.full_name||'U').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+      c.innerHTML = `
+        <div class="profile-card">
+          <div class="profile-avatar-large">${initials}</div>
+          <h3>${esc(p.full_name)}</h3>
+          ${p.callsign?'<p style="color:var(--text-secondary);font-size:0.875rem;">Callsign: <strong>'+esc(p.callsign)+'</strong></p>':''}
+          <div class="profile-role-badge ${p.role}">${p.role==='commanding_officer'?'⭐ Commanding Officer':'🎖️ Field Operator'}</div>
+          <p style="color:var(--text-tertiary);font-size:0.8125rem;margin-top:8px;">Unit: ${esc(p.unit||'Unassigned')}</p>
+        </div>
+        <form class="profile-form" onsubmit="saveProfile(event)">
+          <div class="form-group"><label>Full Name</label><input type="text" id="pf-name" class="form-input" value="${esc(p.full_name)}"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Callsign</label><input type="text" id="pf-call" class="form-input" value="${esc(p.callsign||'')}"></div>
+            <div class="form-group"><label>Unit</label><input type="text" id="pf-unit" class="form-input" value="${esc(p.unit||'')}"></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="pf-btn">Save Profile</button>
+        </form>
+        <div class="section-divider"></div>
+        <button class="btn btn-danger btn-full" onclick="handleLogout()">Sign Out</button>`;
+    }
+
+    async function saveProfile(e) {
+      e.preventDefault();
+      const btn=document.getElementById('pf-btn'); btn.disabled=true; btn.textContent='Saving...';
+      try {
+        await sb.from('profiles').update({full_name:document.getElementById('pf-name').value,callsign:document.getElementById('pf-call').value||null,unit:document.getElementById('pf-unit').value||'Unassigned'}).eq('id',state.user.id);
+        await loadProfile(); updateUserUI(); showToast('Profile updated','success'); renderProfile();
+      } catch(err) { showToast(err.message||'Failed','error'); }
+      btn.disabled=false; btn.textContent='Save Profile';
+    }
+
+    // ════════════════════════════════════════
+    //  REALTIME
+    // ════════════════════════════════════════
+    function setupRealtime() {
+      sb.channel('changes')
+        .on('postgres_changes',{event:'*',schema:'public',table:'assets'}, ()=>{
+          if(state.currentPage==='dashboard') loadDashboard();
+          if(state.currentPage==='assets') loadAssets();
+        })
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'custody_logs'}, ()=>{
+          if(state.currentPage==='activity') loadActivity();
+          if(state.currentPage==='dashboard') loadDashboard();
+        })
+        .subscribe();
+    }
+  </script>
+
+</body>
+</html>
