@@ -771,10 +771,15 @@ ul, ol {
 .stat-card.red::before { background: var(--accent-red); }
 
 .stat-card:hover {
-  border-color: var(--text-muted);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
 }
+
+.stat-card.blue:hover { border-color: var(--accent-blue); box-shadow: 0 12px 30px rgba(0,0,0,0.6), 0 0 20px var(--accent-blue-glow); }
+.stat-card.green:hover { border-color: var(--accent-green); box-shadow: 0 12px 30px rgba(0,0,0,0.6), 0 0 20px var(--accent-green-glow); }
+.stat-card.amber:hover { border-color: var(--accent-amber); box-shadow: 0 12px 30px rgba(0,0,0,0.6), 0 0 20px var(--accent-amber-glow); }
+.stat-card.red:hover { border-color: var(--accent-red); box-shadow: 0 12px 30px rgba(0,0,0,0.6), 0 0 20px var(--accent-red-glow); }
 
 .stat-card .stat-icon {
   font-size: 1.5rem;
@@ -810,15 +815,15 @@ ul, ol {
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
-  transition: var(--transition-base);
+  transition: all var(--transition-base);
   cursor: pointer;
   position: relative;
 }
 
 .asset-card:hover {
-  border-color: var(--text-muted);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6), 0 0 20px rgba(59, 130, 246, 0.15);
 }
 
 .asset-card-header {
